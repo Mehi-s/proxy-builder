@@ -1,10 +1,12 @@
 # Proxy Builder
 
+🌐 **[English](README.md)** | 🚀 **[مشاهده آنلاین روی GitHub Pages](https://hidden-node.github.io/proxy-builder/)**
+
 یک وب‌اپلیکیشن قدرتمند و مستقل با دو ابزار:
 
 <ul dir="rtl" style="direction: rtl; text-align: right;">
-  <li><b>🧬 Fragment + Fingerprint</b> — ارتقای لینک <b>VLESS</b> یا <b>Trojan</b> با افزودن پارامترهای <code>cs</code> (لیست Cipher Suites)، <code>fm</code> (Fragment Mask) و <code>fp</code> (اثر انگشت TLS) به‌همراه قابلیت تغییر سرور (IP/دامنه) — خروجی لینکی آماده برای وارد کردن در کلاینت خودتان.</li>
-  <li><b>🔗 Chain Builder</b> — ترکیب دو کانفیگ پراکسی به یک کانفیگ واحد <b>Xray</b> یا <b>Sing-box</b> برای افزایش پایداری اتصال و استفاده از آی‌پی ثابت.</li>
+  <li><b>🧬 Fragment + Fingerprint</b> — ارتقای لینک‌های <b>VLESS</b> یا <b>Trojan</b> (پشتیبانی از ورودی تکی یا دسته‌ای) با افزودن پارامترهای <code>cs</code> (لیست Cipher Suites)، <code>fm</code> (Fragment Mask) و <code>fp</code> (اثر انگشت TLS) به‌همراه قابلیت تغییر سرور (IP/دامنه) — خروجی لینک‌های آماده برای وارد کردن در کلاینت خودتان.</li>
+  <li><b>🔗 Chain Builder</b> — ترکیب کانفیگ‌های پراکسی به کانفیگ‌های <b>Xray</b> یا <b>Sing-box</b> (پشتیبانی از ورودی دسته‌ای برای کانفیگ ۲ و خروجی آرایه JSON جهت ایمپورت با یک کلیک).</li>
 </ul>
 
 تمام پردازش‌ها درون مرورگر شما انجام می‌شود. هیچ داده‌ای به سروری ارسال نمی‌گردد.
@@ -13,7 +15,8 @@
 
 ### 🧬 Fragment + Fingerprint
 <ul dir="rtl" style="direction: rtl; text-align: right;">
-  <li><b>جای‌گذاری و ارتقا</b>: لینک <code>vless://</code> یا <code>trojan://</code> را جای‌گذاری کنید و لینکی ارتقایافته با پارامترهای <code>cs</code>، <code>fm</code> و <code>fp</code> دریافت کنید.</li>
+  <li><b>جای‌گذاری و ارتقا</b>: لینک <code>vless://</code> یا <code>trojan://</code> (تکی یا چندتایی خط‌به‌خط) را جای‌گذاری کنید و لینک‌های ارتقایافته با پارامترهای <code>cs</code>، <code>fm</code> و <code>fp</code> دریافت کنید.</li>
+  <li><b>پردازش دسته‌ای (Batch Input)</b>: امکان ورود چندین لینک به صورت همزمان (هر خط یک لینک) و دریافت همه لینک‌های ارتقایافته با دکمه <b>Copy All</b>.</li>
   <li><b>تغییر سرور</b>: فیلد سرور (IP/دامنه) به‌صورت خودکار از همان URL استخراج می‌شود و برای کاربر قابل ویرایش است (پشتیبانی از IPv4، IPv6 و دامنه).</li>
   <li><b>اثر انگشت (Fingerprint)</b>: پیش‌فرض <code>unsafe</code> با گزینه‌های <code>chrome</code>، <code>firefox</code>، <code>safari</code>، <code>random</code> و <code>none</code>.</li>
   <li><b>آگاه از TLS</b>: پارامترهای <code>cs</code> و <code>fm</code> فقط زمانی اضافه می‌شوند که کانفیگ از امنیت <code>tls</code> استفاده کند. با خالی کردن هر فیلد، آن پارامتر حذف می‌شود.</li>
@@ -23,7 +26,8 @@
 
 ### 🔗 Chain Builder
 <ul dir="rtl" style="direction: rtl; text-align: right;">
-  <li><b>ترکیب دوگانه کانفیگ</b>: به‌راحتی یک پراکسی اولیه (مانند Worker/CDN) را با یک پراکسی زنجیره‌ای (Chain Proxy) ترکیب کنید.</li>
+  <li><b>ترکیب دوگانه کانفیگ</b>: به‌راحتی یک پراکسی اولیه (مانند Worker/CDN) را با یک یا چند پراکسی زنجیره‌ای (Chain Proxy) ترکیب کنید.</li>
+  <li><b>ورودی دسته‌ای کانفیگ ۲</b>: امکان ورود چندین کانفیگ Chain در کانفیگ ۲ (هر خط یک لینک) و تولید آرایه‌ای از کانفیگ‌ها جهت ایمپورت آسان با یک کلیک در v2rayN، Nekoray و Nekobox.</li>
   <li><b>پشتیبانی از پروتکل‌ها</b>: پشتیبانی از <b>VLESS</b>، <b>VMess</b>، <b>Trojan</b>، <b>Shadowsocks</b>، <b>SOCKS</b>، <b>HTTP</b> و <b>SSH</b>.</li>
   <li><b>خروجی دوگانه</b>: تولید کانفیگ JSON برای هر دو کلاینت <b>Xray</b> و <b>Sing-box</b>.</li>
   <li><b>پشتیبانی از ECH</b>: استخراج و افزودن خودکار تنظیمات ECH برای اتصالی امن‌تر.</li>

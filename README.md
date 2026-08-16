@@ -1,26 +1,28 @@
 # Proxy Builder
 
-🌐 **[فارسی](README-fa.md)** | [English](README.md)
+🌐 **[فارسی](README-fa.md)** | [English](README.md) | 🚀 **[Live Demo on GitHub Pages](https://hidden-node.github.io/proxy-builder/)**
 
 A powerful, standalone web application with two tools:
 
-1. **🧬 Fragment + Fingerprint** — enhance a **VLESS** or **Trojan** URL by injecting `cs` (cipher suites), `fm` (fragment mask) and `fp` (TLS fingerprint) parameters, plus a server (IP/domain) override — producing a link ready to import into your own client.
-2. **🔗 Chain Builder** — chain two proxy configurations into a single **Xray** or **Sing-box** JSON configuration for enhanced connection stability and fixed IP masking.
+1. **🧬 Fragment + Fingerprint** — enhance **VLESS** or **Trojan** URLs (supports single or batch input, one per line) by injecting `cs` (cipher suites), `fm` (fragment mask) and `fp` (TLS fingerprint) parameters, plus a server (IP/domain) override — producing enhanced links ready to import into your own client.
+2. **🔗 Chain Builder** — chain proxy configurations into **Xray** or **Sing-box** JSON configurations (supports batch input for Config 2, outputting JSON arrays for 1-click client import) for enhanced connection stability and fixed IP masking.
 
 All processing happens in your browser. No data is sent to any server.
 
 ## 🚀 Features
 
 ### 🧬 Fragment + Fingerprint
-- **Paste & Enhance**: Paste any `vless://` or `trojan://` URL and get an enhanced link with `cs`, `fm` and `fp` parameters added.
-- **Server Override**: The server (IP/domain) field is auto-filled from the pasted URL and is user-editable (supports IPv4, IPv6 and domains).
+- **Paste & Enhance**: Paste any `vless://` or `trojan://` URL (or multiple URLs line-by-line) and get enhanced links with `cs`, `fm` and `fp` parameters added.
+- **Batch Processing**: Input multiple proxy URLs at once (one per line) and collect all enhanced URLs in a single output with a 1-click **Copy All** button.
+- **Server Override**: The server (IP/domain) field is auto-filled from the pasted URL in single mode and user-editable (supports IPv4, IPv6 and domains).
 - **Fingerprint**: Default `unsafe`, with `chrome`, `firefox`, `safari`, `random` and `none` options.
 - **TLS-aware**: `cs` and `fm` are only added when the config uses `tls` security. Clear a field to skip that parameter.
 - **One-click Copy**: Copy the enhanced URL straight to the clipboard.
 - **Protocol Support**: **VLESS** and **Trojan**.
 
 ### 🔗 Chain Builder
-- **Dual Config Chaining**: Easily chain a primary proxy (e.g., Worker/CDN) with a secondary chain proxy.
+- **Dual Config Chaining**: Easily chain a primary proxy (e.g., Worker/CDN) with a secondary chain proxy (supports batch input for Config 2).
+- **Batch Config 2 Input**: Input multiple chain proxies into Config 2 (one per line) to generate a array of chained configurations in 1-click for easy import into v2rayN, Nekoray, and Nekobox.
 - **Protocol Support**: Supports **VLESS**, **VMess**, **Trojan**, **Shadowsocks**, **SOCKS**, **HTTP**, and **SSH**.
 - **Dual Output**: Generates both **Xray** and **Sing-box** JSON configurations.
 - **ECH Support**: Automatically parses and includes ECH config for secure connections.
