@@ -87,7 +87,7 @@
     const enhancerCard = document.getElementById('enhancer-card');
 
     let parsedConfig1 = null;
-    let parsedConfig2 = null;
+    let parsedConfigs2 = [];
     let sshMode1 = false;
     let sshMode2 = false;
     let lastAutoServer = '';
@@ -425,67 +425,101 @@
     }
 
     function onEnhancerInput() {
-        const val = enhancerInput.value.trim();
-        let parsed = null;
-        let unsupported = false;
-        if (val) {
-            parsed = parseProxyURL(val);
-            if (parsed && parsed.error) {
-                parsed = null;
-            }
-            if (parsed && parsed.protocol !== 'vless' && parsed.protocol !== 'trojan') {
-                unsupported = true;
-                parsed = null;
+        const raw = enhancerInput.value.trim();
+        const lines = raw ? raw.split('\n').map(l => l.trim()).filter(l => l.length > 0) : [];
+
+        const validParsedList = [];
+        let invalidCount = 0;
+
+        for (const line of lines) {
+            const parsed = parseProxyURL(line);
+            if (parsed && !parsed.error && (parsed.protocol === 'vless' || parsed.protocol === 'trojan')) {
+                validParsedList.push(parsed);
+            } else {
+                invalidCount++;
             }
         }
 
-        // Auto-fill the server field from the URL, unless the user typed a custom value
-        if (parsed) {
+        // Auto-fill server field only for single URL mode, unless user typed custom value
+        if (lines.length === 1 && validParsedList.length === 1) {
+            const firstServer = validParsedList[0].server;
             const current = enhancerServer.value.trim();
-            if (!current || current === lastAutoServer || current === parsed.server) {
-                enhancerServer.value = parsed.server || '';
-                lastAutoServer = parsed.server || '';
+            if (!current || current === lastAutoServer || current === firstServer) {
+                enhancerServer.value = firstServer || '';
+                lastAutoServer = firstServer || '';
             }
-        } else if (!enhancerServer.value.trim()) {
-            lastAutoServer = '';
+        } else {
+            const current = enhancerServer.value.trim();
+            if (current === lastAutoServer) {
+                enhancerServer.value = '';
+                lastAutoServer = '';
+            }
         }
-
-        renderParsedInfo(
-            parsed
-                ? parsed
-                : (val ? { error: unsupported ? 'Only VLESS and Trojan URLs are supported' : 'Failed to parse URL' } : null),
-            enhancerParsed
-        );
-        updateProtocolTag(enhancerProtocolTag, parsed);
 
         enhancerCard.classList.remove('valid', 'invalid');
-        if (val && parsed) {
-            enhancerCard.classList.add('valid');
-        } else if (val) {
-            enhancerCard.classList.add('invalid');
-        }
 
-        btnEnhance.disabled = !parsed;
-        enhanceHint.textContent = parsed
-            ? 'Ready to enhance!'
-            : 'Paste a VLESS or Trojan URL above to enable';
-        enhanceHint.style.color = parsed ? '#4cdf86' : '';
+        if (lines.length === 0) {
+            enhancerParsed.innerHTML = '';
+            updateProtocolTag(enhancerProtocolTag, null);
+            btnEnhance.disabled = true;
+            enhanceHint.textContent = 'Paste VLESS or Trojan URLs above to enable';
+            enhanceHint.style.color = '';
+        } else if (lines.length === 1 && validParsedList.length === 1) {
+            renderParsedInfo(validParsedList[0], enhancerParsed);
+            updateProtocolTag(enhancerProtocolTag, validParsedList[0]);
+            enhancerCard.classList.add('valid');
+            btnEnhance.disabled = false;
+            enhanceHint.textContent = 'Ready to enhance!';
+            enhanceHint.style.color = '#4cdf86';
+        } else {
+            let infoHtml = `<div class="info-row">
+                <span class="info-label">Batch Input</span>
+                <span class="info-value">${validParsedList.length} valid / ${lines.length} total URLs</span>
+            </div>`;
+            if (invalidCount > 0) {
+                infoHtml += `<div class="error-msg">⚠️ ${invalidCount} invalid or unsupported line(s) ignored</div>`;
+            }
+            enhancerParsed.innerHTML = infoHtml;
+
+            if (validParsedList.length > 0) {
+                updateProtocolTag(enhancerProtocolTag, { protocol: `BATCH (${validParsedList.length})` });
+                enhancerCard.classList.add('valid');
+                btnEnhance.disabled = false;
+                enhanceHint.textContent = `Ready to enhance ${validParsedList.length} URL(s)!`;
+                enhanceHint.style.color = '#4cdf86';
+            } else {
+                updateProtocolTag(enhancerProtocolTag, null);
+                enhancerCard.classList.add('invalid');
+                btnEnhance.disabled = true;
+                enhanceHint.textContent = 'No valid VLESS or Trojan URLs found';
+                enhanceHint.style.color = '';
+            }
+        }
     }
 
     function onEnhance() {
-        const result = enhanceURL(enhancerInput.value);
-        if (!result || result.error) {
+        const raw = enhancerInput.value.trim();
+        const lines = raw ? raw.split('\n').map(l => l.trim()).filter(l => l.length > 0) : [];
+
+        const enhancedList = [];
+        for (const line of lines) {
+            const res = enhanceURL(line);
+            if (res && res.url) {
+                enhancedList.push(res.url);
+            }
+        }
+
+        if (enhancedList.length === 0) {
             enhancerOutputSection.style.display = 'none';
             return;
         }
 
-        const parsed = parseProxyURL(enhancerInput.value);
-        const remark = parsed && parsed.remark
-            ? `✨ ${parsed.protocol.toUpperCase()} ${parsed.server}:${parsed.port} | enhanced`
-            : '✨ Enhanced';
+        const remark = enhancedList.length === 1
+            ? '✨ Enhanced 1 URL'
+            : `✨ Enhanced ${enhancedList.length} URLs`;
 
         enhancerOutputRemark.textContent = remark;
-        enhancerOutputUrl.textContent = result.url;
+        enhancerOutputUrl.textContent = enhancedList.join('\n');
         enhancerOutputSection.style.display = 'block';
         enhancerOutputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -1465,67 +1499,158 @@
             .replace(/([{}[\]])/g, '<span class="json-brace">$1</span>');
     }
 
+    // ===== Batch Config Helpers for Chain Builder =====
+    function generateXrayBatch(config1, configs2) {
+        if (configs2.length === 1) {
+            return generateFullConfig(config1, configs2[0]);
+        }
+        const results = configs2.map(c2 => generateFullConfig(config1, c2));
+        const configs = results.map(r => r.config);
+        const remark = `🔗 ${config1.protocol.toUpperCase()} → Batch (${configs2.length} proxies)`;
+        return { config: configs, remark };
+    }
+
+    function generateSingboxBatch(config1, configs2) {
+        if (configs2.length === 1) {
+            return generateSingboxConfig(config1, configs2[0]);
+        }
+        const results = configs2.map(c2 => generateSingboxConfig(config1, c2));
+        const configs = results.map(r => r.config);
+        const remark = `🔗 ${config1.protocol.toUpperCase()} → Batch (${configs2.length} proxies)`;
+        return { config: configs, remark };
+    }
+
+    function generateSingboxClientBatch(config1, configs2) {
+        if (configs2.length === 1) {
+            return generateSingboxClientConfig(config1, configs2[0]);
+        }
+        const results = configs2.map(c2 => generateSingboxClientConfig(config1, c2));
+        const configs = results.map(r => r.config);
+        const remark = `🔗 NEKORAY: ${config1.protocol.toUpperCase()} → Batch (${configs2.length} proxies)`;
+        return { config: configs, remark };
+    }
+
+    function generateNekoboxBatch(config1, configs2) {
+        if (configs2.length === 1) {
+            return generateNekoboxConfig(config1, configs2[0]);
+        }
+        const results = configs2.map(c2 => generateNekoboxConfig(config1, c2));
+        const configs = results.map(r => r.config);
+        const remark = `🔗 NEKOBOX: ${config1.protocol.toUpperCase()} → Batch (${configs2.length} proxies)`;
+        return { config: configs, remark };
+    }
+
     // ===== Event Handlers =====
     function onInputChange(inputEl, parsedContainer, protocolTag, card, isConfig1) {
-        let parsed;
-        if (isConfig1 && sshMode1) {
-            parsed = parseSSH(1);
-        } else if (!isConfig1 && sshMode2) {
-            parsed = parseSSH(2);
-        } else {
-            const val = inputEl.value.trim();
-            parsed = val ? parseProxyURL(val) : null;
-        }
-
         if (isConfig1) {
+            let parsed;
+            if (sshMode1) {
+                parsed = parseSSH(1);
+            } else {
+                const val = inputEl.value.trim();
+                parsed = val ? parseProxyURL(val) : null;
+            }
             parsedConfig1 = parsed && !parsed.error ? parsed : null;
+
+            renderParsedInfo(parsed, parsedContainer);
+            updateProtocolTag(protocolTag, parsed);
+
+            card.classList.remove('valid', 'invalid');
+            if (sshMode1) {
+                const server = document.getElementById('ssh-server1').value.trim();
+                if (server && parsed) {
+                    card.classList.add(parsed.error ? 'invalid' : 'valid');
+                }
+            } else {
+                const val = inputEl.value.trim();
+                if (val && parsed) {
+                    card.classList.add(parsed.error ? 'invalid' : 'valid');
+                }
+            }
+
+            if (parsedConfig1) {
+                flowProxyLabel.textContent = `${parsedConfig1.protocol.toUpperCase()} ${parsedConfig1.server}`;
+            } else {
+                flowProxyLabel.textContent = 'Config 1';
+            }
         } else {
-            parsedConfig2 = parsed && !parsed.error ? parsed : null;
-        }
+            parsedConfigs2 = [];
+            if (sshMode2) {
+                const parsed = parseSSH(2);
+                if (parsed && !parsed.error) {
+                    parsedConfigs2.push(parsed);
+                }
+                renderParsedInfo(parsed, parsedContainer);
+                updateProtocolTag(protocolTag, parsed);
 
-        renderParsedInfo(parsed, parsedContainer);
-        updateProtocolTag(protocolTag, parsed);
+                card.classList.remove('valid', 'invalid');
+                const server = document.getElementById('ssh-server2').value.trim();
+                if (server && parsed) {
+                    card.classList.add(parsed.error ? 'invalid' : 'valid');
+                }
 
-        // For SSH mode, we also consider the card valid if server is filled
-        card.classList.remove('valid', 'invalid');
-        if (isConfig1 && sshMode1) {
-            const server = document.getElementById('ssh-server1').value.trim();
-            if (server && parsed) {
-                card.classList.add(parsed.error ? 'invalid' : 'valid');
+                if (parsedConfigs2.length > 0) {
+                    flowChainLabel.textContent = `SSH ${parsedConfigs2[0].server}`;
+                } else {
+                    flowChainLabel.textContent = 'Config 2';
+                }
+            } else {
+                const raw = inputEl.value.trim();
+                const lines = raw ? raw.split('\n').map(l => l.trim()).filter(l => l.length > 0) : [];
+                let invalidCount = 0;
+
+                for (const line of lines) {
+                    const parsed = parseProxyURL(line);
+                    if (parsed && !parsed.error) {
+                        parsedConfigs2.push(parsed);
+                    } else {
+                        invalidCount++;
+                    }
+                }
+
+                card.classList.remove('valid', 'invalid');
+
+                if (lines.length === 0) {
+                    parsedContainer.innerHTML = '';
+                    updateProtocolTag(protocolTag, null);
+                    flowChainLabel.textContent = 'Config 2';
+                } else if (lines.length === 1 && parsedConfigs2.length === 1) {
+                    renderParsedInfo(parsedConfigs2[0], parsedContainer);
+                    updateProtocolTag(protocolTag, parsedConfigs2[0]);
+                    card.classList.add('valid');
+                    flowChainLabel.textContent = `${parsedConfigs2[0].protocol.toUpperCase()} ${parsedConfigs2[0].server}`;
+                } else {
+                    let infoHtml = `<div class="info-row">
+                        <span class="info-label">Batch Input</span>
+                        <span class="info-value">${parsedConfigs2.length} valid / ${lines.length} total chain URLs</span>
+                    </div>`;
+                    if (invalidCount > 0) {
+                        infoHtml += `<div class="error-msg">⚠️ ${invalidCount} invalid line(s) ignored</div>`;
+                    }
+                    parsedContainer.innerHTML = infoHtml;
+
+                    if (parsedConfigs2.length > 0) {
+                        updateProtocolTag(protocolTag, { protocol: `BATCH (${parsedConfigs2.length})` });
+                        card.classList.add('valid');
+                        flowChainLabel.textContent = `Batch (${parsedConfigs2.length} proxies)`;
+                    } else {
+                        updateProtocolTag(protocolTag, null);
+                        card.classList.add('invalid');
+                        flowChainLabel.textContent = 'Config 2';
+                    }
+                }
             }
-        } else if (!isConfig1 && sshMode2) {
-            const server = document.getElementById('ssh-server2').value.trim();
-            if (server && parsed) {
-                card.classList.add(parsed.error ? 'invalid' : 'valid');
-            }
-        } else {
-            const val = inputEl.value.trim();
-            if (val && parsed) {
-                card.classList.add(parsed.error ? 'invalid' : 'valid');
-            }
-        }
-
-        if (isConfig1 && parsedConfig1) {
-            flowProxyLabel.textContent = `${parsedConfig1.protocol.toUpperCase()} ${parsedConfig1.server}`;
-        } else if (isConfig1) {
-            flowProxyLabel.textContent = 'Config 1';
-        }
-
-        if (!isConfig1 && parsedConfig2) {
-            flowChainLabel.textContent = `${parsedConfig2.protocol.toUpperCase()} ${parsedConfig2.server}`;
-        } else if (!isConfig1) {
-            flowChainLabel.textContent = 'Config 2';
         }
 
         updateGenerateButton();
     }
 
     function updateGenerateButton() {
-        const enabled = parsedConfig1 && parsedConfig2;
+        const enabled = parsedConfig1 && parsedConfigs2.length > 0;
         btnGenerate.disabled = !enabled;
         generateHint.textContent = enabled
             ? 'Ready to generate!'
-            : (!parsedConfig1 && !parsedConfig2)
+            : (!parsedConfig1 && parsedConfigs2.length === 0)
                 ? 'Paste both configs above to enable'
                 : !parsedConfig1
                     ? 'Config 1 is missing or invalid'
@@ -1534,9 +1659,9 @@
     }
 
     function onGenerate() {
-        if (!parsedConfig1 || !parsedConfig2) return;
+        if (!parsedConfig1 || parsedConfigs2.length === 0) return;
 
-        const hasSSH = parsedConfig1.protocol === 'ssh' || parsedConfig2.protocol === 'ssh';
+        const hasSSH = parsedConfig1.protocol === 'ssh' || parsedConfigs2.some(c => c.protocol === 'ssh');
 
         // Handle tabs visibility for SSH
         if (hasSSH) {
@@ -1550,7 +1675,7 @@
 
         // Generate Xray config (skip if SSH is involved)
         if (!hasSSH) {
-            const xrayResult = generateFullConfig(parsedConfig1, parsedConfig2);
+            const xrayResult = generateXrayBatch(parsedConfig1, parsedConfigs2);
             if (!xrayResult) {
                 outputSection.style.display = 'none';
                 return;
@@ -1563,21 +1688,21 @@
         }
 
         // Generate Sing-box config
-        const singboxResult = generateSingboxConfig(parsedConfig1, parsedConfig2);
+        const singboxResult = generateSingboxBatch(parsedConfig1, parsedConfigs2);
         if (singboxResult) {
             outputRemarkSingbox.textContent = singboxResult.remark;
             outputJsonSingbox.innerHTML = highlightJSON(singboxResult.config);
         }
 
         // Generate Nekoray config
-        const singboxClientResult = generateSingboxClientConfig(parsedConfig1, parsedConfig2);
+        const singboxClientResult = generateSingboxClientBatch(parsedConfig1, parsedConfigs2);
         if (singboxClientResult) {
             outputRemarkSingboxClient.textContent = singboxClientResult.remark;
             outputJsonSingboxClient.innerHTML = highlightJSON(singboxClientResult.config);
         }
 
         // Generate Nekobox config
-        const nekoboxResult = generateNekoboxConfig(parsedConfig1, parsedConfig2);
+        const nekoboxResult = generateNekoboxBatch(parsedConfig1, parsedConfigs2);
         if (nekoboxResult) {
             outputRemarkNekobox.textContent = nekoboxResult.remark;
             outputJsonNekobox.innerHTML = highlightJSON(nekoboxResult.config);
@@ -1588,8 +1713,8 @@
     }
 
     function doCopy(btn, configGenerator) {
-        if (!parsedConfig1 || !parsedConfig2) return;
-        const result = configGenerator(parsedConfig1, parsedConfig2);
+        if (!parsedConfig1 || parsedConfigs2.length === 0) return;
+        const result = configGenerator(parsedConfig1, parsedConfigs2);
         if (!result) return;
 
         const text = JSON.stringify(result.config, null, 2);
@@ -1604,8 +1729,8 @@
     }
 
     function doDownload(configGenerator, prefix) {
-        if (!parsedConfig1 || !parsedConfig2) return;
-        const result = configGenerator(parsedConfig1, parsedConfig2);
+        if (!parsedConfig1 || parsedConfigs2.length === 0) return;
+        const result = configGenerator(parsedConfig1, parsedConfigs2);
         if (!result) return;
 
         const text = JSON.stringify(result.config, null, 2);
@@ -1613,7 +1738,8 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${prefix}-${parsedConfig1.protocol}-${parsedConfig2.protocol}-${parsedConfig2.server}.json`;
+        const countStr = parsedConfigs2.length > 1 ? `batch-${parsedConfigs2.length}` : `${parsedConfigs2[0].protocol}-${parsedConfigs2[0].server}`;
+        a.download = `${prefix}-${parsedConfig1.protocol}-${countStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1697,20 +1823,20 @@
     btnGenerate.addEventListener('click', onGenerate);
 
     // Xray copy/download
-    btnCopyXray.addEventListener('click', () => doCopy(btnCopyXray, generateFullConfig));
-    btnDownloadXray.addEventListener('click', () => doDownload(generateFullConfig, 'xray-chain'));
+    btnCopyXray.addEventListener('click', () => doCopy(btnCopyXray, generateXrayBatch));
+    btnDownloadXray.addEventListener('click', () => doDownload(generateXrayBatch, 'xray-chain'));
 
     // Sing-box copy/download
-    btnCopySingbox.addEventListener('click', () => doCopy(btnCopySingbox, generateSingboxConfig));
-    btnDownloadSingbox.addEventListener('click', () => doDownload(generateSingboxConfig, 'singbox-chain'));
+    btnCopySingbox.addEventListener('click', () => doCopy(btnCopySingbox, generateSingboxBatch));
+    btnDownloadSingbox.addEventListener('click', () => doDownload(generateSingboxBatch, 'singbox-chain'));
 
     // Nekoray copy/download
-    btnCopySingboxClient.addEventListener('click', () => doCopy(btnCopySingboxClient, generateSingboxClientConfig));
-    btnDownloadSingboxClient.addEventListener('click', () => doDownload(generateSingboxClientConfig, 'nekoray-chain'));
+    btnCopySingboxClient.addEventListener('click', () => doCopy(btnCopySingboxClient, generateSingboxClientBatch));
+    btnDownloadSingboxClient.addEventListener('click', () => doDownload(generateSingboxClientBatch, 'nekoray-chain'));
 
     // Nekobox copy/download
-    btnCopyNekobox.addEventListener('click', () => doCopy(btnCopyNekobox, generateNekoboxConfig));
-    btnDownloadNekobox.addEventListener('click', () => doDownload(generateNekoboxConfig, 'nekobox-chain'));
+    btnCopyNekobox.addEventListener('click', () => doCopy(btnCopyNekobox, generateNekoboxBatch));
+    btnDownloadNekobox.addEventListener('click', () => doDownload(generateNekoboxBatch, 'nekobox-chain'));
 
     // Tab switching
     tabXray.addEventListener('click', () => {
