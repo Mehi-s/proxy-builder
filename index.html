@@ -108,8 +108,7 @@
                         <span class="card-icon">2️⃣</span>
                         <div>
                             <h2>Config 2 — Chain Proxy</h2>
-                            <p class="card-hint">External proxy to chain through (this becomes the <code>chain</code>
-                                outbound)</p>
+                            <p class="card-hint">External proxy or proxies to chain through (supports batch input, one per line)</p>
                         </div>
                     </div>
                     <div class="card-header-right">
@@ -121,7 +120,7 @@
                 </div>
                 <div class="input-group" id="url-input-group2">
                     <textarea id="config2-input" class="config-input"
-                        placeholder="Paste chain proxy URL here...&#10;e.g. vless://uuid@server:port?params#remark"
+                        placeholder="Paste chain proxy URL(s) here (one per line)...&#10;e.g. vless://uuid@server:port?params#remark"
                         spellcheck="false"></textarea>
                     <button class="btn-clear" id="clear2" title="Clear">✕</button>
                 </div>
@@ -375,7 +374,7 @@
                         <div>
                             <h2>Proxy URL Enhancer</h2>
                             <p class="card-hint">Adds <code>cs</code> (cipher suites), <code>fm</code> (fragment mask)
-                                and <code>fp</code> to VLESS / Trojan URLs</p>
+                                and <code>fp</code> to VLESS / Trojan URLs (supports batch input)</p>
                         </div>
                     </div>
                     <div class="card-header-right">
@@ -384,7 +383,7 @@
                 </div>
                 <div class="input-group">
                     <textarea id="enhancer-input" class="config-input"
-                        placeholder="Paste VLESS or Trojan URL here...&#10;e.g. vless://uuid@address:port?params#remark"
+                        placeholder="Paste VLESS or Trojan URL(s) here (one per line)...&#10;e.g. vless://uuid@address:port?params#remark"
                         spellcheck="false"></textarea>
                     <button class="btn-clear" id="enhancer-clear" title="Clear">✕</button>
                 </div>
@@ -434,10 +433,10 @@
             <!-- Output -->
             <div class="output-section" id="enhancer-output-section" style="display:none;">
                 <div class="output-header">
-                    <h3>📋 Enhanced URL</h3>
+                    <h3>📋 Enhanced URL(s)</h3>
                     <div class="output-actions">
                         <button class="btn-copy" id="btn-copy-enhancer" title="Copy to clipboard">
-                            <span class="copy-icon">📋</span> Copy
+                            <span class="copy-icon">📋</span> Copy All
                         </button>
                     </div>
                 </div>
